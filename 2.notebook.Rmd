@@ -1,0 +1,555 @@
+---
+title: "Projet 6 : Détection de faux billets"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  
+---
+
+```{r echo=FALSE, message=FALSE}
+library(corrplot) # pour la matrice de corrélation
+library('prettyR')
+library("FactoMineR") # pour PCA
+library("factoextra") # get_... de la PCA
+require(MASS) # pour la regression logistique : forward, step-wise..
+library("caret")
+```
+
+Import des données :
+
+```{r}
+billets = read.csv2('1.donnees/billets.csv', sep=',', dec = '.')
+```
+
+# Préparation des données
+
+- On renomme les modalités de la variable `is_guenine` en deux modalités `vrai_billet` & `faux_billet`
+
+```{r, echo=FALSE}
+billets$is_genuine = factor(billets$is_genuine, levels = c('True', 'False'), labels = c('vrai_billet', 'faux_billet'))
+```
+
+```{r, echo=FALSE}
+# on garde en mémoire les variables qui représentent les dimensions du billet
+billet.var.dim = c('length', 'height_left', 'height_right', 'margin_low', 'margin_up', 'diagonal')
+```
+
+# Statistiques déscriptives
+
+## Mission 0 : Analyses univariées et bivariées
+
+### Déscription du dataframe
+
+- le dataset contient **`r nrow(billets)`** lignes & **`r ncol(billets)` colonnes**
+- Il y a **`r sum(billets$is_genuine == 'faux_billet')` faux billets** et **`r sum(billets$is_genuine == 'vrai_billet')` vrais billets**
+
+Exemple d'un billet :
+
+```{r, echo=FALSE}
+head(billets, 1)
+```
+
+### Univariées
+
+Quelques statistiques univariées :
+
+```{r, echo=FALSE}
+describe(billets[, billet.var.dim], num.desc = c('mean', 'sd'))
+```
+
+**On a des données très précises** :
+
+- l'unité est le mm, précis au 100eme de mm
+- les écart-types sont très bas (< 0.7mm)
+
+### Bivariées
+
+#### Corrélation entre les variables
+
+Matrice de corrélation linéaire : 
+
+```{r echo=FALSE}
+corrplot(cor(billets[, billet.var.dim]), type="upper", tl.col="black")
+```
+
+On constate les corrélations suivantes :
+
+- corrélation négative entre `margin_low` et `diagonal`
+- corrélation positive entre `height_left` et `height_right`
+- corrélation négative entre `margin_up` et `diagonal` ?
+
+#### Comparaison de la distribution des billets vrai et faux
+
+```{r}
+par(mfrow=c(2,3))
+for (var in billet.var.dim) {
+  boxplot(
+    billets[billets$is_genuine == 'vrai_billet', var],
+    billets[billets$is_genuine == 'faux_billet', var],
+    col = c('#00B233', '#B20000'),
+    horizontal = TRUE
+  )
+  title(main=var)
+}
+```
+
+Variables qui semblent les plus discriminantes :
+
+- `margin_low`
+- `diagonal`
+- `margin_up` ?
+
+## Mission 1 : Analyse en Composante Principale
+
+```{r, echo=FALSE}
+acp.result = PCA(X =  billets, quali.sup = 1, graph = FALSE)
+```
+
+### Éboulis des valeurs propres
+
+```{r, echo=FALSE}
+fviz_eig(acp.result, addlabels = TRUE)
+```
+
+** On peut aussi afficher la répartition du cos2 sur les dimensions :  **
+
+```{r, echo=FALSE}
+corrplot(get_pca_var(acp.result)$cos2, is.corr=FALSE)
+```
+
+On constate que la majorité des variables sont bien représentées sur PC1 sauf `length`, qui est exclusivement corrélée à PC2. il en est de même avec `margin_up` et PC3.
+
+PC1 contient 70% de l'information, mais on va tout de même explorer les 3 premier plans.
+
+### Cercle des corrélations
+
+```{r, echo=FALSE}
+fviz_pca_var(acp.result,
+             axes=c(1,2),
+             col.var = "cos2",
+             gradient.cols =  c("#00AFBB", "#E7B800", "#FC4E07"),
+             geom=c('arrow', 'text'),
+             labelsize = 4,
+             repel = TRUE
+)
+```
+
+**PC1** 
+
+  - variables liées aux hauteurs et aux marges
+  - la diagonal est plutôt corrélées négativement à PC1 (ce qui n'est pas très logique)
+  
+**PC2** : quasi-exclusivement expliquée par length
+
+### Nuage des individus
+
+On observe les nuages sur les 3 premiers plans factoriels :
+
+#### Plan 1-2
+
+```{r, echo=FALSE, results="hide"}
+# create fig
+fig = fviz_pca_ind(acp.result, 
+             axes = c(1,2),
+             geom=c('point'),
+             habillage = 1,
+             palette = c('#00B233', '#B20000'),
+             alpha.ind="cos2",
+             select.ind = list(cos2 = 0.3),
+             mean.point = FALSE,
+             addEllipses = TRUE,
+             pointshape=19,
+             legend.title = "Type de billet"
+)
+
+# save fig as svg
+svg('3.notebook_figures/1.acp_plan_1_2.svg', width=10, height=6)
+fig
+dev.off()
+
+fig
+```
+
+Contient ~70% de l'information.
+
+La qualité de la répresentation est représenté par le niveau de transparence du point. On n'affiche ici que les billets dont le `cos2 > 0.3`
+
+On observe très distinctement les deux groupes : **les dimensions sont de très bon indicateurs** pour estimer si un billet est vrai ou faux.
+
+#### Plan 1-3
+
+```{r, echo=FALSE, results='hide'}
+fig = fviz_pca_ind(acp.result, 
+             axes = c(1,3),
+             geom=c('point'),
+             habillage = 1,
+             palette = c('#00B233', '#B20000'),
+             alpha.ind="cos2",
+             select.ind = list(cos2 = 0.3),
+             mean.point = FALSE,
+             addEllipses = TRUE,
+             legend.title = "Type de billet"
+)
+
+svg('3.notebook_figures/2.acp_plan_1_3.svg', width=10, height=6)
+fig
+dev.off()
+
+fig
+```
+
+Contient ~60% de l'information
+
+Les vrais et les faux billets se confondent plus que sur PF1.
+
+#### Plan 2-3
+
+```{r, echo=FALSE, results='hide'}
+fig = fviz_pca_ind(acp.result, 
+             axes = c(2,3),
+             geom=c('point'),
+             habillage = 1,
+             palette = c('#00B233', '#B20000'),
+             alpha.ind="cos2",
+             mean.point = FALSE,
+             addEllipses = TRUE,
+             legend.title = "Type de billet"
+)
+
+svg('3.notebook_figures/3.acp_plan_2_3.svg', width=10, height=6)
+fig
+dev.off()
+
+fig
+```
+
+
+Contient (seulement) 36% de l'information.
+
+Beaucoup de points transparents : la **projection est mauvaise**
+
+Les vrais et les faux billets ont des positions presques analogues.
+
+#### Conclusion
+
+Pour illsutrer les résultats des futurs alogrithmes, on choisit PF1, car il offre la rerprésentation la plus séparée des vrai et faux billets.
+
+# Maching Learning
+
+Dans cette partie on va effectuer différents algorithmes de machine learning supervisés et non-supervisés :
+
+- Clustering Ascendant Hiérarchique
+- K-means
+- HCPC
+- Régression logistique
+
+## Mission 2 : Classification non supervisée
+
+Clustering Ascendant Hiérarchique et K-means
+
+### Préparation des données
+
+- **On normalise les données quantitatives des billets**
+
+```{r, echo=FALSE}
+pop.non.sprv.appr = scale(billets[, billet.var.dim])
+```
+
+### Clustering Ascendant Hiérarchique
+
+#### Calculs
+
+```{r}
+cah.result = hclust(dist(pop.non.sprv.appr))
+
+# découpage en 2 classes
+cah.clusters = cutree(cah.result, 2)
+```
+
+#### Matrice de confusion
+
+```{r, echo=FALSE}
+cah.mat.conf = table(cah.clusters, billets$is_genuine)
+cah.mat.conf
+```
+
+On constate que :
+
+  - la majorité des vrai billets sont dans le cluster 2
+  - la majorité des faux billets sont dans le cluster 1
+  
+Remarque : il y a beaucoup de vrai billets qui sont considérés comme faux (*faux négatif*).
+C'est beaucoup, mais on préfère cela à l'inverse (*faux positif : faux billets qui sont considérés comme vrai*)
+
+**`r round((cah.mat.conf[2,1] + cah.mat.conf[1,2]) / sum(cah.mat.conf), 2)*100`% des billets sont bien classés**.
+
+#### Visualisation sur le 1er plan factoriel
+
+```{r, echo=FALSE, results='hide'}
+
+# on créé les 4 labels
+cah.acp.label = factor(paste(cah.clusters, billets$is_genuine, sep = ' - '))
+
+fig = fviz_pca_ind(acp.result, 
+             geom=c('point'),
+             pointshape = 19,
+             habillage = cah.acp.label,
+             palette = c('#B20000',  # 1 - faux billet
+                         '#B26000',  # 1 - vrai billet 
+                         '#00B2A0',  # 2 - faux billet
+                         '#00B233'), # 2 - vrai billet
+             alpha.ind="cos2",
+             mean.point = FALSE,
+             legend.title = "Légende"
+)
+
+svg('3.notebook_figures/5.cah_acp.svg', width=10, height=6)
+fig
+dev.off()
+
+fig
+```
+
+On voit ici les faux négatifs en orange
+
+### K-means
+
+#### Calcul
+
+```{r}
+set.seed(1027)
+kmeans.result = kmeans(x = pop.non.sprv.appr, 2)
+kmeans.clusters = kmeans.result$cluster
+```
+
+#### matrice de confusion
+
+```{r, echo=FALSE}
+kmeans.mat.conf = table(kmeans.clusters, billets$is_genuine)
+
+# on determine la classe majoritaire de chaque cluster
+cluster_FAUX = ifelse(kmeans.mat.conf[1,2] > kmeans.mat.conf[2,2], 1, 2)
+cluster_VRAI = ifelse(kmeans.mat.conf[1,1] > kmeans.mat.conf[2,1], 1, 2)
+
+kmeans.mat.conf
+```
+
+On constate que la majorité :
+
+- des faux billets sont dans le cluster `r cluster_FAUX`
+- des vrais billets sont dans le cluster `r cluster_VRAI`
+
+**`r round( (kmeans.mat.conf[cluster_VRAI, 1] + kmeans.mat.conf[cluster_FAUX, 2]) / nrow(billets) * 100)`% des billets sont bien classés**.
+
+#### Visualisation sur le 1er plan factoriel
+
+```{r, echo=FALSE, results='hide'}
+# on créé les 4 labels
+kmeans.acp.label = factor(paste(kmeans.clusters, billets$is_genuine, sep = ' - '))
+
+fig = fviz_pca_ind(acp.result, 
+             geom=c('point'),
+             pointshape = 19,
+             habillage = kmeans.acp.label,
+             palette = c('#00B2A0',  # 1 - faux billet
+                         '#00B233',  # 1 - vrai billet 
+                         '#B20000',  # 2 - faux billet
+                         '#B26000'), # 2 - vrai billet
+             alpha.ind="cos2",
+             mean.point = FALSE,
+             legend.title = "Type de billet"
+)
+svg('3.notebook_figures/6.kmeans_acp.svg', width=10, height=6)
+fig
+dev.off()
+
+fig
+```
+
+On constate que le nombre de faux négatif a baissé à 8 (il y a moins de points oranges).
+
+### HCPC
+
+La méthode HCPC combine l'ACP, le CAH et les k-means.
+
+#### Calcul
+
+```{r}
+res.hcpc <- HCPC(acp.result, nb.clust = 2, graph = FALSE)
+hcpc.clusters = res.hcpc$data.clust$clust
+```
+
+#### Matrice de confusion
+
+```{r, echo=FALSE}
+hcp.mat.conf = table(hcpc.clusters, billets$is_genuine)
+hcp.mat.conf
+```
+
+On a les même résultats qu'avec l'alogrithme `k-means`
+
+## Mission 3 : Classification supervisées
+
+### Préparation des données
+
+```{r, echo=FALSE}
+pop.sprv = billets
+
+QT_JEU_APPRENTISSAGE = 0.75
+```
+
+On divise en un jeu d'apprentissage et de test en  **`r QT_JEU_APPRENTISSAGE *100`%-`r (1-QT_JEU_APPRENTISSAGE)*100`%**.
+
+On utilise la librairie `caret` pour avoir une proportion similaire de vrai/faux billets dans chaque jeu.
+
+```{r, echo=FALSE}
+
+set.seed(1039)
+
+# indices des billets utilisés pour l'apprentissage et le test
+pop.sprv.appr.i = createDataPartition(y = pop.sprv$is_genuine, times = 1, p = QT_JEU_APPRENTISSAGE)$Resample1
+pop.sprv.test.i = setdiff(1:nrow(pop.sprv), pop.sprv.appr.i)
+
+# jeu d'apprentissage
+pop.sprv.appr = pop.sprv[pop.sprv.appr.i,]
+
+# jeu de test
+
+pop.sprv.test.explicatives = pop.sprv[pop.sprv.test.i, billet.var.dim]
+
+pop.sprv.test.explique = pop.sprv[pop.sprv.test.i, 'is_genuine']
+names(pop.sprv.test.explique) = pop.sprv.test.i
+```
+
+*Effectif du jeu d'apprentissage : *
+```{r, echo=FALSE}
+table(pop.sprv.appr$is_genuine)
+```
+
+*Effectif du jeu de test :*
+```{r, echo=FALSE}
+table(as.character(pop.sprv.test.explique))
+```
+
+### Régression logistique
+
+On va construire un **modèle basée sur la régression logistique**, pour **calculer la probabilité d'un billet** qu'il soit dans l'une ou l'autre des modalités de `is_genuine` en fonction de ses dimensions.
+
+#### Calcul du modèle avec l'approche *stepwise*
+
+l'approche stepwise va proposer un choix de variables expliquatives optimales. en minimisant **l'AIC**.
+
+```{r, echo=FALSE, warning=FALSE}
+reg.log.form.const = '~ 1'
+reg.log.form.all = '~ length + height_left + height_right + margin_low + margin_up + diagonal'
+
+reg.log.model = glm(is_genuine ~ 1, data = pop.sprv.appr, family = 'binomial')
+reg.log.model = stepAIC(reg.log.model,
+                        data = pop.sprv.appr,
+                        direction="both",
+                        scope = list(lower = reg.log.form.const, upper = reg.log.form.all),
+                        trace = FALSE)
+```
+
+Voici les variables choisies et leurs coefficients :
+
+```{r, echo=FALSE}
+reg.log.model$coefficients
+```
+
+#### Prédiciton du jeu de test
+
+```{r}
+pop.sprv.test.prediction = ifelse(
+  predict(reg.log.model, pop.sprv.test.explicatives, type='response') < 0.5,
+  'vrai_billet',
+  'faux_billet')
+```
+
+#### Evaluation du modèle
+
+##### Matrice de confusion
+
+```{r, echo=FALSE}
+reg.log.mat.conf = table(
+  'prediction'=pop.sprv.test.prediction,
+  'is_guenine'=pop.sprv.test.explique
+)
+
+# calcul de la précision et du rappel
+vp = reg.log.mat.conf[2, 1]
+vn = reg.log.mat.conf[1, 2]
+fp = reg.log.mat.conf[2,2]
+fn = reg.log.mat.conf[1, 1]
+
+precision = round(vp / (vp + fp), 2)
+rappel = round(vp / (vp + fn), 2)
+
+reg.log.mat.conf
+```
+
+**La précision vaut `r precision`** et **le rappel vaut `r rappel`**
+
+On a une bonne précision et un bon rappel. **On note qu'il y a tout de même `r round(fp / sum(reg.log.mat.conf) * 100, 2) `% des faux billets qui ne sont pas détectés.**
+
+Mais ces résultats ne sont pas précis car notre échantillon ne contient que `r length(pop.sprv.test.i)` individus.
+
+#### Projection sur 1er plan factoriel
+
+```{r, echo=FALSE}
+# calcul des labels pour la 1ere ACP
+reg.log.acp1.label = as.character(pop.sprv$is_genuine)
+reg.log.acp1.label[pop.sprv.test.i] = 'inconnu'
+reg.log.acp1.label = factor(reg.log.acp1.label)
+
+# on labelise les billets de test comme VP, FP, VN et FN
+vp_fn = factor(paste(pop.sprv.test.explique, pop.sprv.test.prediction))
+levels(vp_fn) = c('Vrai Négatif', 'Faux Positif', 'Faux Négatif', 'Vrai Positif')
+names(vp_fn) = pop.sprv.test.i
+
+# calcul des labels pour la 2nd ACP
+reg.log.acp2.label = as.character(pop.sprv$is_genuine)
+names(reg.log.acp2.label) = rownames(pop.sprv)
+reg.log.acp2.label[names(vp_fn)] = as.character(vp_fn)
+reg.log.acp2.label = factor(reg.log.acp2.label)
+```
+
+```{r, echo=FALSE, results='hide'}
+fig1 = fviz_pca_ind(acp.result, 
+             geom=c('point'),
+             pointshape = 19,
+             habillage = reg.log.acp1.label,
+             palette = c('#FFCAC9',  'black', '#91FFB4'), 
+             mean.point = FALSE,
+             legend.title = "Légende"
+)
+
+fig2 = fviz_pca_ind(acp.result, 
+             geom=c('point'),
+             pointshape = 19,
+             habillage = reg.log.acp2.label,
+             palette = c('#000FB2', # fn
+                         '#7B01B2', # fp
+                         '#FFCAC9', # faux billet 
+                         '#B20000', # vrai negatif
+                         '#00B233', # vrai positif
+                         '#91FFB4' # vrai billet
+                         ),
+             mean.point = FALSE,
+             legend.title = "Légende"
+)
+
+svg('3.notebook_figures/7.reg_log_acp1.svg', width=10, height=6)
+fig1
+dev.off()
+
+svg('3.notebook_figures/8.reg_log_acp2.svg', width=10, height=6)
+fig2
+dev.off()
+
+fig1
+fig2
+```
+
+On voit que les billets mal classés (ici en bleu et violet) sont spatialement entre les deux clusters sur PF1. On comprend qu'il est plus difficile pour la régression linéaire de leur assigner une classe.
