@@ -1,5 +1,7 @@
 Ce projet a été réalisé dans le cadre de la formation [Data Analyst](https://openclassrooms.com/fr/paths/65-data-analyst), sur la plateforme OpenClassrooms.
 
+Voir le fichier [présentation.pdf](présentation.pdf), utilisé comme support lors de la soutenance.
+
 ## Sujet
 
 Effectuer un algorithme de détections de faux billets basé sur l'analyse de données géométriques de billets.
@@ -15,5 +17,3 @@ Le dossier contient :
     
 1 *R notebook*
 - `2.notebook.Rmd`
-
-Ainsi qu'un fichier `présentation.pdf`, utilisé comme support lors de la soutenance.
