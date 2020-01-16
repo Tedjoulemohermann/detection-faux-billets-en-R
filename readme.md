@@ -1,7 +1,5 @@
 Ce projet a été réalisé dans le cadre de la formation [Data Analyst](https://openclassrooms.com/fr/paths/65-data-analyst), sur la plateforme OpenClassrooms.
 
-Voir le fichier [présentation.pdf](présentation.pdf), utilisé comme support lors de la soutenance.
-
 ## Scénario
 
 > Votre société de consulting informatique vous propose une nouvelle mission au ministère de l'Intérieur, dans le cadre de la lutte contre la criminalité organisée, à l'Office central pour la répression du faux monnayage . Votre mission si vous l'acceptez : créer un algorithme de détection de faux billets. 
