@@ -12,6 +12,8 @@ Ce projet a été réalisé dans le cadre de la formation [Data Analyst](https:/
 
 ### :arrow_forward: [Voir ma présentation des résultats](présentation.pdf)
 
+------------------------------------------------------------
+
 ## Organisation des sources
 
 Le dossier contient :
