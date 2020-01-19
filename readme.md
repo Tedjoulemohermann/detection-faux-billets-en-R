@@ -12,7 +12,7 @@ Ce projet a été réalisé dans le cadre de la formation [Data Analyst](https:/
 
 ### :arrow_forward: [Voir ma présentation des résultats](présentation.pdf)
 
-### :notebook: [Notebook](https://htmlpreview.github.io/?https://github.com/CharlieBrugvin/detection-faux-billets/blob/master/2.notebook.html)
+### :notebook: [Notebook](https://htmlpreview.github.io/?https://github.com/CharlieBrugvin/detection-faux-billets-en-R/blob/master/2.notebook.html)
 
 ------------------------------------------------------------
 
