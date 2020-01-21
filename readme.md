@@ -27,3 +27,21 @@ Le dossier contient :
     
 1 *R notebook*
 - `2.notebook.Rmd`
+
+## Programme de détection de faux billets
+
+Pour le lancer depuis le terminal :
+```
+cd 4.programme_detection
+```
+puis lancer le script R avec comme argument le fichier contenant les billets à tester
+```
+Rscript detect_faux_billets.R 'billets_a_tester.csv'
+```
+
+Cela affichera pour chaque billet sa probabilité d'être vrai. Un fichier acp.svg sera automatiquement enregistré, affichant le billets à tester parmis les données d'apprentissage sur le premier plan factoriel.
+
+Exemple : 
+
+![alt text](4.programme_detection/acp.svg)
+
