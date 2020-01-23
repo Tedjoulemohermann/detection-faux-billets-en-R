@@ -1,5 +1,7 @@
 *Ce projet a été réalisé dans le cadre de la formation [Data Analyst](https://openclassrooms.com/fr/paths/65-data-analyst), sur la plateforme OpenClassrooms.*
 
+## Détection automatique de faux billets
+
 ### Introduction
 
 Dans le cadre de ce projet, j'ai créé un programme capable de détecter si un billet est faux à partir de ses dimensions.
