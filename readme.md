@@ -1,34 +1,34 @@
-Ce projet a été réalisé dans le cadre de la formation [Data Analyst](https://openclassrooms.com/fr/paths/65-data-analyst), sur la plateforme OpenClassrooms.
+*Ce projet a été réalisé dans le cadre de la formation [Data Analyst](https://openclassrooms.com/fr/paths/65-data-analyst), sur la plateforme OpenClassrooms.*
 
-## Scénario
+### Introduction
 
-> Votre société de consulting informatique vous propose une nouvelle mission au ministère de l'Intérieur, dans le cadre de la lutte contre la criminalité organisée, à l'Office central pour la répression du faux monnayage . Votre mission si vous l'acceptez : créer un algorithme de détection de faux billets. 
->
-> Vous vous voyez déjà en grand justicier combattant sans relâche la criminalité organisée en pianotant à mains de maître votre ordinateur, pour façonner ce fabuleux algorithme  qui traquera la moindre fraude et permettra de mettre à jour les réseaux secrets de faux-monnayeurs ! La classe, non ?
->
->... Bon, si on retombait les pieds sur terre? Travailler pour la police judiciaire, c'est bien, mais vous allez devoir faire appel à vos connaissances en statistiques, alors on y va !
+Dans le cadre de ce projet, j'ai créé un programme capable de détecter si un billet est faux à partir de ses dimensions.
+
+J'ai exploré les données d'apprentissage fournies contenant les dimensions et les labels de 170 billets fictifs. J'ai analysé les corrélations entre les variables pour déterminer les plus discriminantes en effectuant des analyses bivariées et une ACP.
+J'ai ensuite comparé différents algorithmes de classifications non supervisées : le CAH, les K-means et l'HCP. Les données étant labellisées, j'ai également effectué une classification supervisée. J'ai divisé le jeu donné en train/test pour tester l'efficacité d'un modèle de régression logistique.
+
+J'ai implémenté un programme utilisant ce modèle et calculant automatiquement la probabilité d'authenticité d'une liste de billets. Il affiche sous forme de graphique les billets testés parmi les données d'apprentissage (sur le premier plan factoriel) afin d'offrir une intuition visuelle de la classification.
 
 <br />
 
-### :arrow_forward: [Voir ma présentation des résultats](présentation.pdf)
+:arrow_forward: [Voir ma présentation des résultats](présentation.pdf)
 
-### :notebook: [Notebook](https://htmlpreview.github.io/?https://github.com/CharlieBrugvin/detection-faux-billets-en-R/blob/master/2.notebook.html)
+:notebook: [Notebook](https://htmlpreview.github.io/?https://github.com/CharlieBrugvin/detection-faux-billets-en-R/blob/master/2.notebook.html)
 
-------------------------------------------------------------
+<br />
 
-## Organisation des sources
 
-Le dossier contient :
+### Organisation des sources
 
-*3 dossiers*
+3 dossiers :
 - `1.donnees` : les données initiales du projet
 - `3.notebook_figures` : graphiques et données générées lors de l'étude
-- `4.programme_detection` : code source du programme de détection, qui génère un fichier projetant sour forme d'acp les billets à détecter parmis les données d'apprentissages.
+- `4.programme_detection` : code source du programme de détection
     
-1 *R notebook*
+1 R notebook :
 - `2.notebook.Rmd`
 
-## Programme de détection de faux billets
+### Programme de détection de faux billets
 
 Pour le lancer depuis le terminal :
 ```
